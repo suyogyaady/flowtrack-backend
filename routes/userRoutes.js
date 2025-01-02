@@ -22,6 +22,12 @@ router.get("/get_all_users", authGuard, userController.getAllUsers);
 router.get("/get_single_profile", authGuard, userController.getSingleProfile);
 router.put("/update_profile", authGuard, userController.updateUser);
 
+// upload profile picture
+router.post("/profile_picture", userController.uploadProfilePicture);
+
+// update user details
+router.put("/update", authGuard, userController.editUserProfile);
+
 //generate token
 router.post("/generate_token", userController.getToken);
 

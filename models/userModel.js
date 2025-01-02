@@ -18,6 +18,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  budget: {
+    type: Number,
+    required: true,
+    default: 0, // Initial budget is 0, can be updated when the user is created
+    min: [0, "Budget cannot be negative"], // Prevent negative budgets
+  },
+  profilePicture: {
+    type: String,
+  },
 
   // resetPasswordOTP: {
   //   type: Number,

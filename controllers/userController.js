@@ -1,6 +1,9 @@
 const userModel = require("../models/userModel");
+const transactionModel = require("../models/transcationModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const path = require("path");
+
 // const sendOtp = require("../service/sendotp");
 
 const { OAuth2Client } = require("google-auth-library");
@@ -11,10 +14,10 @@ const createUser = async (req, res) => {
   console.log(req.body);
 
   // 2. Destructure the incoming data
-  const { username, title, email, password } = req.body;
+  const { username, title, email, password, budget } = req.body;
 
   // 3. Validate the data (if empty, stop the process and send response)
-  if (!username || !title || !email || !password) {
+  if (!username || !title || !email || !password || !budget) {
     // res.send("Please enter all fields!")
     return res.json({
       success: false,
@@ -43,6 +46,7 @@ const createUser = async (req, res) => {
     const newUser = new userModel({
       // Database Fields  : Client's Value
       username: username,
+      budget: budget,
 
       email: email,
       title: title,
@@ -186,64 +190,6 @@ const loginUser = async (req, res) => {
 //   }
 // };
 
-// const resetPassword = async (req, res) => {
-//   console.log(req.body);
-
-//   const { phoneNumber, otp, password } = req.body;
-
-//   if (!phoneNumber || !otp || !password) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Please enter all fields",
-//     });
-//   }
-
-//   try {
-//     const user = await userModel.findOne({ phoneNumber: phoneNumber });
-//     if (!user) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-//     // Otp to integer
-//     const otpToInteger = parseInt(otp);
-
-//     if (user.resetPasswordOTP !== otpToInteger) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid OTP",
-//       });
-//     }
-
-//     if (user.resetPasswordExpires < Date.now()) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "OTP expired",
-//       });
-//     }
-
-//     const randomSalt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, randomSalt);
-
-//     user.password = hashedPassword;
-//     user.resetPasswordOTP = null;
-//     user.resetPasswordExpires = null;
-//     await user.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Password reset successfully",
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//     });
-//   }
-// };
-
 // Fetch all users
 const getAllUsers = async (req, res) => {
   try {
@@ -283,6 +229,7 @@ const getSingleProfile = async (req, res) => {
         username: user.username,
         email: user.email,
         title: user.title,
+        budget: user.budget,
         password: "Please update your password",
         _id: user._id,
       },
@@ -345,6 +292,150 @@ const updateUser = async (req, res) => {
     });
   }
 };
+
+const uploadProfilePicture = async (req, res) => {
+  // const id = req.user.id;
+  console.log(req.files);
+  const { profilePicture } = req.files;
+
+  if (!profilePicture) {
+    return res.status(400).json({
+      success: false,
+      message: "Please upload an image",
+    });
+  }
+
+  //  Upload the image
+  // 1. Generate new image name
+  const imageName = `${Date.now()}-${profilePicture.name}`;
+
+  // 2. Make a upload path (/path/upload - directory)
+  const imageUploadPath = path.join(
+    __dirname,
+    `../public/profile_pictures/${imageName}`
+  );
+
+  // Ensure the directory exists
+  const directoryPath = path.dirname(imageUploadPath);
+  fs.mkdirSync(directoryPath, { recursive: true });
+
+  try {
+    // 3. Move the image to the upload path
+    profilePicture.mv(imageUploadPath);
+
+    //  send image name to the user
+    res.status(200).json({
+      success: true,
+      message: "Image uploaded successfully",
+      profilePicture: imageName,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error,
+    });
+  }
+};
+
+const editUserProfile = async (req, res) => {
+  const { username, title, email } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if there is a new profile picture
+    if (req.files && req.files.profilePicture) {
+      const { profilePicture } = req.files;
+      const imageName = `${Date.now()}-${profilePicture.name}`;
+      const imageUploadPath = path.join(
+        __dirname,
+        `../public/profile_pictures/${imageName}`
+      );
+
+      // Upload the new profile picture
+      await profilePicture.mv(imageUploadPath);
+
+      // Delete the old profile picture if it exists
+      if (user.profilePicture) {
+        const oldImagePath = path.join(
+          __dirname,
+          `../public/users/${user.profilePicture}`
+        );
+        fs.unlinkSync(oldImagePath);
+      }
+
+      // Set the new profile picture name in the user data
+      user.profilePicture = imageName;
+    }
+
+    // Update the user profile fields
+    user.username = username || user.username;
+    user.title = title || user.title;
+    user.email = email || user.email;
+
+    // Save the updated user profile
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "User profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating user profile",
+      error: error.message,
+    });
+  }
+};
+
+// edit user profile
+// const editUserProfile = async (req, res) => {
+//   const { username, email, title, profilePicture } = req.body;
+//   const userId = req.user.id;
+
+//   try {
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     user.username = username || user.username;
+//     user.email = email || user.email;
+//     user.title = title || user.title;
+//     user.profilePicture = profilePicture || user.profilePicture;
+
+//     await user.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "User profile updated successfully",
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Error updating user profile:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error updating user profile",
+//       error: error.message,
+//     });
+//   }
+// };
+
 // get token
 const getToken = async (req, res) => {
   try {
@@ -477,10 +568,40 @@ const getUserByGoogleEmail = async (req, res) => {
   }
 };
 
+const adjustBudget = async (userID, transactionType, amount) => {
+  try {
+    const user = await userModel.findById(userID);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (transactionType === "Income") {
+      user.budget += amount; // Increase budget for income
+    } else if (transactionType === "Expense") {
+      if (user.budget < amount) {
+        throw new Error("Insufficient budget");
+      }
+      user.budget -= amount; // Decrease budget for expense
+    } else {
+      throw new Error("Invalid transaction type");
+    }
+
+    await user.save();
+    return user;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// get expense and income by user
+
+
+
 // Exporting
 module.exports = {
   createUser,
   loginUser,
+  adjustBudget,
   // forgotPassword,
   // resetPassword,
   getAllUsers,
@@ -489,4 +610,6 @@ module.exports = {
   getToken,
   googleLogin,
   getUserByGoogleEmail,
+  editUserProfile,
+  uploadProfilePicture,
 };

@@ -32,7 +32,9 @@ app.get("/FlowTrack", (req, res) => {
 
 // Configuring routes
 app.use("/api/user", require("./routes/userRoutes"));
-
+app.use("/api/expense", require("./routes/expenseRoutes"));
+app.use("/api/income", require("./routes/incomeRoutes"));
+app.use("/api/transaction", require("./routes/transactionRoutes"));
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
