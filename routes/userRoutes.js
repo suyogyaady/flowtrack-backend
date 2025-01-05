@@ -9,24 +9,32 @@ router.post("/create", userController.createUser);
 // Creating login route
 router.post("/login", userController.loginUser);
 
+//delete account route
+router.delete("/delete_account", authGuard, userController.deleteAccount);
+
 // // Creating user forgot password route
 // router.post("/forgot-password", userController.forgotPassword);
 
 // // Creating user reset password route
 // router.post("/reset-password", userController.resetPassword);
 
+router.put("/change_password", authGuard, userController.changePassword);
+
 // Route to fetch all users
 router.get("/get_all_users", authGuard, userController.getAllUsers);
 
 // User Profile route
 router.get("/get_single_profile", authGuard, userController.getSingleProfile);
-router.put("/update_profile", authGuard, userController.updateUser);
 
 // upload profile picture
-router.post("/profile_picture", userController.uploadProfilePicture);
+router.put(
+  "/upload_profile_picture",
+  authGuard,
+  userController.uploadProfilePicture
+);
 
 // update user details
-router.put("/update", authGuard, userController.editUserProfile);
+router.put("/update_profile", authGuard, userController.editUserProfile);
 
 //generate token
 router.post("/generate_token", userController.getToken);

@@ -24,6 +24,12 @@ router.get(
   expenseController.getTransactionsByUser
 );
 
+// Get total expense
+router.get("/get_total_expense", authGuard, expenseController.getTotalExpenses);
+
+// Get total income
+router.get("/get_total_income", authGuard, expenseController.getTotalIncomes);
+
 // exporting the router
 // export default router;
 module.exports = router;

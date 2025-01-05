@@ -17,7 +17,7 @@ exports.createTransaction = async (req, res) => {
     }
 
     const userID = req.user.id;
-    amount = 0;
+    let amount = 0;
 
     if (transactionType === "Expense") {
       const expense = await Expense.findById(ExpenseID);
@@ -42,6 +42,7 @@ exports.createTransaction = async (req, res) => {
       IncomeID: transactionType === "Income" ? IncomeID : null,
       transactionDate,
       userID,
+      amount,
     });
 
     const savedTransaction = await transaction.save();
@@ -70,9 +71,58 @@ exports.getTransactionsByUser = async (req, res) => {
     const userID = req.user.id;
     const transactions = await Transaction.find({ userID })
       .populate("ExpenseID", "expenseName expenseAmount expenseCategory")
-      .populate("IncomeID", "incomeName incomeAmount incomeCategory ")
-      .populate("userID", "name email");
+      .populate("IncomeID", "incomeName incomeAmount incomeCategory")
+      .populate("userID", "name email")
+      .sort({ transactionDate: -1 });
     res.status(200).json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTotalExpenses = async (req, res) => {
+  try {
+    const userID = req.user.id;
+
+    // Fetch all transactions of type "Expense" for the user
+    const expenses = await Transaction.find({
+      userID,
+      transactionType: "Expense",
+    });
+
+    // Calculate total expenses
+    const totalExpenses = expenses.reduce(
+      (sum, transaction) => sum + (transaction.amount || 0),
+      0
+    );
+
+    res.status(200).json({
+      totalExpenses,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTotalIncomes = async (req, res) => {
+  try {
+    const userID = req.user.id;
+
+    // Fetch all transactions of type "Income" for the user
+    const incomes = await Transaction.find({
+      userID,
+      transactionType: "Income",
+    });
+
+    // Calculate total incomes
+    const totalIncomes = incomes.reduce(
+      (sum, transaction) => sum + (transaction.amount || 0),
+      0
+    );
+
+    res.status(200).json({
+      totalIncomes,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

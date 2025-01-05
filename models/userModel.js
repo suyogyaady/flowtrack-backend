@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
 
+  isGoogle: {
+    type: Boolean,
+    default: false,
+  },
+
   // resetPasswordOTP: {
   //   type: Number,
   //   default: null,

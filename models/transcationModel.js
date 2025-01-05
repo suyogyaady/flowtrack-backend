@@ -30,6 +30,11 @@ const transactionSchema = new mongoose.Schema({
     ref: "users",
     required: true,
   },
+
+  amount: {
+    type: Number,
+    required: true,
+  },
 });
 
 const Transaction = mongoose.model("Transaction", transactionSchema);

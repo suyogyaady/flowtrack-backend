@@ -3,6 +3,7 @@ const transactionModel = require("../models/transcationModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const path = require("path");
+const fs = require("fs");
 
 // const sendOtp = require("../service/sendotp");
 
@@ -140,55 +141,40 @@ const loginUser = async (req, res) => {
   }
 };
 
-// const forgotPassword = async (req, res) => {
-//   console.log(req.body);
+const deleteAccount = async (req, res) => {
+  try {
+    // Get the user ID from the request (assuming token verification middleware sets `req.user.id`)
+    const userId = req.user.id;
 
-//   const { phoneNumber } = req.body;
+    // Find the user in the database
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
-//   if (!phoneNumber) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Please enter your phone number",
-//     });
-//   }
-//   try {
-//     const user = await userModel.findOne({ phoneNumber: phoneNumber });
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-//     // Generate OTP
-//     const randomOTP = Math.floor(100000 + Math.random() * 900000);
-//     console.log(randomOTP);
+    // Delete the user account
+    await userModel.findByIdAndDelete(userId);
 
-//     user.resetPasswordOTP = randomOTP;
-//     user.resetPasswordExpires = Date.now() + 600000; // 10 minutes
-//     await user.save();
+    // Optional: If there are related records (e.g., transactions), delete them as well
+    await transactionModel.deleteMany({ userId: userId });
 
-//     // Send OTP to user phone number
-//     const isSent = await sendOtp(phoneNumber, randomOTP);
-
-//     if (!isSent) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Error in sending OTP",
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: "OTP sent to your phone number",
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//     });
-//   }
-// };
+    // Send response
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 // Fetch all users
 const getAllUsers = async (req, res) => {
@@ -231,6 +217,8 @@ const getSingleProfile = async (req, res) => {
         title: user.title,
         budget: user.budget,
         password: "Please update your password",
+        profilePicture: user.profilePicture,
+        isGoogle: user.isGoogle,
         _id: user._id,
       },
     });
@@ -244,97 +232,74 @@ const getSingleProfile = async (req, res) => {
   }
 };
 
-// Update User
-const updateUser = async (req, res) => {
-  const id = req.user.id;
-  const { password, ...restBody } = req.body; // Destructure password from req.body
-
-  try {
-    // Hash the password if present in the request body
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      restBody.password = hashedPassword;
-    }
-
-    const user = await userModel.findById(id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    user.username = restBody.username;
-    user.title = restBody.title;
-    user.email = restBody.email;
-
-    const updatedUser = await user.save();
-
-    if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "User updated successfully",
-      data: updatedUser,
-    });
-  } catch (err) {
-    console.error("Error updating User:", err);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update",
-      error: err.message,
-    });
-  }
-};
-
 const uploadProfilePicture = async (req, res) => {
-  // const id = req.user.id;
-  console.log(req.files);
-  const { profilePicture } = req.files;
+  console.log("Files:", req.files);
 
-  if (!profilePicture) {
+  // Validate that the profile picture is provided
+  if (!req.files || !req.files.newImage) {
     return res.status(400).json({
       success: false,
-      message: "Please upload an image",
+      message: "Please provide an Image!",
     });
   }
 
-  //  Upload the image
-  // 1. Generate new image name
-  const imageName = `${Date.now()}-${profilePicture.name}`;
+  const { newImage } = req.files;
 
-  // 2. Make a upload path (/path/upload - directory)
-  const imageUploadPath = path.join(
-    __dirname,
-    `../public/profile_pictures/${imageName}`
+  // Generate a unique name for the image
+  const imageName = `${Date.now()}_${newImage.name}`;
+
+  // Define the image path
+  const imagePath = path.join(
+    __dirname, // Ensure you're using the correct directory path
+    "../public/profile_pictures/", // Get the current directory
+    imageName
   );
 
-  // Ensure the directory exists
-  const directoryPath = path.dirname(imageUploadPath);
-  fs.mkdirSync(directoryPath, { recursive: true });
-
+  // Move the uploaded image to the 'public/user/' directory
   try {
-    // 3. Move the image to the upload path
-    profilePicture.mv(imageUploadPath);
+    // Ensure the 'user' directory exists
+    const userDirectory = path.join(
+      __dirname, // Ensure you're using the correct directory path
+      "../public/profile_pictures/"
+    );
+    if (!fs.existsSync(userDirectory)) {
+      fs.mkdirSync(userDirectory, { recursive: true });
+    }
 
-    //  send image name to the user
-    res.status(200).json({
-      success: true,
-      message: "Image uploaded successfully",
-      profilePicture: imageName,
+    // Move the image file to the destination directory
+    newImage.mv(imagePath, async (err) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image",
+        });
+      }
+
+      // Find the user by ID
+      const user = await userModel.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Update the profile picture in the database with the new image path
+      user.profilePicture = `/profile_pictures/${imageName}`;
+      await user.save();
+
+      // Respond with the success message
+      res.status(200).json({
+        success: true,
+        message: "Profile Picture updated successfully",
+        user: user,
+      });
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: "Internal Server Error",
-      error: error,
+      message: "Internal server error",
     });
   }
 };
@@ -400,42 +365,6 @@ const editUserProfile = async (req, res) => {
   }
 };
 
-// edit user profile
-// const editUserProfile = async (req, res) => {
-//   const { username, email, title, profilePicture } = req.body;
-//   const userId = req.user.id;
-
-//   try {
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     user.username = username || user.username;
-//     user.email = email || user.email;
-//     user.title = title || user.title;
-//     user.profilePicture = profilePicture || user.profilePicture;
-
-//     await user.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: "User profile updated successfully",
-//       user,
-//     });
-//   } catch (error) {
-//     console.error("Error updating user profile:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Error updating user profile",
-//       error: error.message,
-//     });
-//   }
-// };
-
 // get token
 const getToken = async (req, res) => {
   try {
@@ -470,61 +399,73 @@ const getToken = async (req, res) => {
 };
 
 const googleLogin = async (req, res) => {
-  console.log(req.body);
-  // Destructuring the data
-  const { token } = req.body;
-  // Validate
-  if (!token) {
-    return res.status(400).json({
-      success: false,
-      message: "Please fill all the fields",
-    });
-  }
-  // try catch
   try {
-    // verify token
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Google token is required",
+      });
+    }
+
+    // Verify the Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-    const { email, given_name } = ticket.getPayload();
+
+    const { email, given_name, picture } = ticket.getPayload();
+
+    // Find or create user
     let user = await userModel.findOne({ email: email });
+
     if (!user) {
-      const { password } = req.body;
+      // Generate a secure random password for Google users
+      const randomPassword = Math.random().toString(36).slice(-12);
       const randomSalt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, randomSalt);
+      const hashedPassword = await bcrypt.hash(randomPassword, randomSalt);
+
+      // Create new user
       user = new userModel({
         username: given_name,
         email: email,
         password: hashedPassword,
-        title: "",
+        title: "Google User", // Default title for Google users
+        budget: 0, // Default budget
+        profilePicture: picture, // Use Google profile picture if available
+        isGoogle: true,
       });
+
       await user.save();
     }
-    // generate token
-    const jwtToken = await jwt.sign(
-      { id: user._id, role: user.role },
+
+    // Generate JWT token
+    const jwtToken = jwt.sign(
+      { id: user._id, isAdmin: user.isAdmin },
       process.env.JWT_SECRET,
-      (options = {
-        expiresIn: Date.now() + 20 * 24 * 60 * 60 * 1000 || "1d",
-      })
+      { expiresIn: "24h" }
     );
+
     return res.status(200).json({
       success: true,
-      message: "User Logged In Successfully!",
+      message: "Successfully logged in with Google!",
       token: jwtToken,
-      user: {
+      userData: {
         id: user._id,
         username: user.username,
         email: user.email,
+        title: user.title,
+        isAdmin: user.isAdmin,
+        profilePicture: user.profilePicture,
       },
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({
+    console.error("Google login error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Internal Server Error!",
-      error: error,
+      message: "Failed to authenticate with Google",
+      error: error.message,
     });
   }
 };
@@ -541,6 +482,7 @@ const getUserByGoogleEmail = async (req, res) => {
   }
   try {
     // verify token
+    console.log(token);
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -555,7 +497,7 @@ const getUserByGoogleEmail = async (req, res) => {
       });
     }
     res.status(201).json({
-      success: false,
+      success: true,
       message: "User not found",
     });
   } catch (e) {
@@ -593,9 +535,68 @@ const adjustBudget = async (userID, transactionType, amount) => {
   }
 };
 
+// Change Password
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  // 1. Check if the currentPassword and newPassword are provided
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide both current password and new password!",
+    });
+  }
+
+  try {
+    // 2. Find the user from the database
+    const user = await userModel.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+
+    // 3. Compare the current password with the one in the database
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect!",
+      });
+    }
+
+    // 4. Check if the new password is the same as the current password
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password cannot be the same as the current password!",
+      });
+    }
+
+    // 5. Hash the new password before saving it
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // 6. Update the user's password in the database
+    user.password = hashedNewPassword;
+    await user.save();
+
+    // 7. Send response
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 // get expense and income by user
-
-
 
 // Exporting
 module.exports = {
@@ -606,10 +607,11 @@ module.exports = {
   // resetPassword,
   getAllUsers,
   getSingleProfile,
-  updateUser,
+  deleteAccount,
   getToken,
   googleLogin,
   getUserByGoogleEmail,
   editUserProfile,
   uploadProfilePicture,
+  changePassword,
 };
