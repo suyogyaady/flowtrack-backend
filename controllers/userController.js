@@ -425,14 +425,16 @@ const googleLogin = async (req, res) => {
       const randomPassword = Math.random().toString(36).slice(-12);
       const randomSalt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(randomPassword, randomSalt);
+      const title = req.body.title || "Google User";
+      const budget = req.body.budget || 0;
 
       // Create new user
       user = new userModel({
         username: given_name,
         email: email,
         password: hashedPassword,
-        title: "Google User", // Default title for Google users
-        budget: 0, // Default budget
+        title: title, // Default title for Google users
+        budget: budget, // Default budget
         profilePicture: picture, // Use Google profile picture if available
         isGoogle: true,
       });
@@ -596,6 +598,54 @@ const changePassword = async (req, res) => {
   }
 };
 
+updateGoogleUser = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.body.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+
+    // Update required fields for first-time Google login
+    if (req.body.title) {
+      user.title = req.body.title;
+    }
+    if (req.body.monthlyBudget) {
+      user.monthlyBudget = req.body.monthlyBudget;
+    }
+    if (req.body.googleId) {
+      user.googleId = req.body.googleId;
+    }
+
+    await user.save();
+
+    // Return updated user data
+    const userData = {
+      _id: user._id,
+      username: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      title: user.title,
+      budget: user.budget,
+      profilePicture: user.profilePicture,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully!",
+      userData,
+    });
+  } catch (error) {
+    console.error("Update Google user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+    });
+  }
+};
+
 // get expense and income by user
 
 // Exporting
@@ -614,4 +664,5 @@ module.exports = {
   editUserProfile,
   uploadProfilePicture,
   changePassword,
+  updateGoogleUser,
 };

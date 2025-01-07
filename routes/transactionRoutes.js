@@ -1,34 +1,55 @@
 const router = require("express").Router();
 const { authGuard, adminGuard } = require("../middleware/authGuard");
 
-const expenseController = require("../controllers/transactionController");
+const transcationController = require("../controllers/transactionController");
 
 // Add
 router.post(
   "/create_transaction",
   authGuard,
-  expenseController.createTransaction
+  transcationController.createTransaction
 );
 
 // Route to fetch all expenses
 router.get(
   "/get_all_transactions",
   authGuard,
-  expenseController.getTransactions
+  transcationController.getTransactions
 );
 
 // Route to fetch all expenses
 router.get(
   "/get_all_transactions_by_user",
   authGuard,
-  expenseController.getTransactionsByUser
+  transcationController.getTransactionsByUser
 );
 
 // Get total expense
-router.get("/get_total_expense", authGuard, expenseController.getTotalExpenses);
+router.get(
+  "/get_total_expense",
+  authGuard,
+  transcationController.getTotalExpenses
+);
 
 // Get total income
-router.get("/get_total_income", authGuard, expenseController.getTotalIncomes);
+router.get(
+  "/get_total_income",
+  authGuard,
+  transcationController.getTotalIncomes
+);
+
+// Get expense by user
+router.get(
+  "/get_all_expense",
+  authGuard,
+  transcationController.getExpensesByUser
+);
+// Get income by user
+router.get(
+  "/get_all_income",
+  authGuard,
+  transcationController.getIncomesByUser
+);
 
 // exporting the router
 // export default router;

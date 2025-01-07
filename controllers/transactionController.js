@@ -127,3 +127,38 @@ exports.getTotalIncomes = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// get expenses by user
+exports.getExpensesByUser = async (req, res) => {
+  try {
+    const userID = req.user.id;
+    const transactions = await Transaction.find({
+      userID,
+      transactionType: "Expense",
+    })
+      .populate("ExpenseID", "expenseName expenseAmount expenseCategory")
+      .populate("userID")
+      .sort({ transactionDate: -1 });
+    res.status(200).json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// get incomes by user
+exports.getIncomesByUser = async (req, res) => {
+  try {
+    const userID = req.user.id;
+
+    const transactions = await Transaction.find({
+      userID,
+      transactionType: "Income",
+    })
+      .populate("IncomeID")
+      .populate("userID")
+      .sort({ transactionDate: -1 });
+    res.status(200).json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
