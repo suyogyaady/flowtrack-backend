@@ -24,6 +24,8 @@ const incomeSchema = new mongoose.Schema(
           "Bonus",
           "Overtime",
           "Rental Income",
+          "Investment",
+          "Pension",
           "Other",
         ],
         message: "Invalid category",
