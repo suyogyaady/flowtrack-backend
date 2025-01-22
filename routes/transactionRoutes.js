@@ -51,6 +51,20 @@ router.get(
   transcationController.getIncomesByUser
 );
 
+// getTransactionsByMonth;
+router.get(
+  "/get_transactions_by_month",
+  authGuard,
+  transcationController.getTransactionsByMonth
+);
+
+// getMonthlyTransactionsWithBudget
+router.get(
+  "/get_monthly_transactions_with_budget",
+  authGuard,
+  transcationController.getMonthlyTransactionsWithBudget
+);
+
 // exporting the router
 // export default router;
 module.exports = router;

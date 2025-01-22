@@ -1,4 +1,5 @@
 const Expense = require("../models/expenseModel");
+const Transaction = require("../models/transcationModel");
 
 // Create a new expense
 const createExpense = async (req, res) => {
@@ -75,7 +76,31 @@ const getAllExpenses = async (req, res) => {
   }
 };
 
+//delete expense
+const deleteExpense = async (req, res) => {
+  try {
+    const transactionId = req.params.id;
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+    console.log(transaction.ExpenseID);
+
+    const expenseId = transaction.ExpenseID;
+    const deletedExpense = await Expense.findByIdAndDelete(expenseId);
+
+    // delete the transcation of the expense
+    await Transaction.deleteMany({ ExpenseID: expenseId });
+
+    res.status(200).json({ message: "Expense deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   createExpense,
   getAllExpenses,
+  deleteExpense,
 };

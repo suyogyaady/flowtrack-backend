@@ -1,5 +1,5 @@
 const router = require("express").Router();
-// const { authGuard, adminGuard } = require("../middleware/authGuard");
+const { authGuard } = require("../middleware/authGuard");
 
 const expenseController = require("../controllers/expenseController");
 
@@ -7,6 +7,13 @@ const expenseController = require("../controllers/expenseController");
 router.post("/create_expense", expenseController.createExpense);
 // Route to fetch all expenses
 router.get("/get_all_expenses", expenseController.getAllExpenses);
+
+// deleteExpense
+router.delete(
+  "/delete_expense/:id",
+  authGuard,
+  expenseController.deleteExpense
+);
 
 // exporting the router
 // export default router;
