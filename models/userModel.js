@@ -33,15 +33,15 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
-  // resetPasswordOTP: {
-  //   type: Number,
-  //   default: null,
-  // },
+  otp: {
+    type: Number,
+    default: null,
+  },
 
-  // resetPasswordExpires: {
-  //   type: Date,
-  //   default: null,
-  // },
+  otpExpiration: {
+    type: Date,
+    default: null,
+  },
 });
 
 const User = mongoose.model("users", userSchema);

@@ -43,5 +43,11 @@ router.post("/generate_token", userController.getToken);
 router.post("/google_login", userController.googleLogin);
 router.post("/get_user_by_google_email", userController.getUserByGoogleEmail);
 
+// send password reset email
+router.put("/send_password_reset_email", userController.sendPasswordResetEmail);
+
+// reset password
+router.put("/reset_password", userController.resetPassword);
+
 // exporting the router
 module.exports = router;

@@ -8,6 +8,7 @@ const fs = require("fs");
 // const sendOtp = require("../service/sendotp");
 
 const { OAuth2Client } = require("google-auth-library");
+const sendResetEmail = require("../services/sendResetEmail");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const createUser = async (req, res) => {
@@ -598,7 +599,7 @@ const changePassword = async (req, res) => {
   }
 };
 
-updateGoogleUser = async (req, res) => {
+const updateGoogleUser = async (req, res) => {
   try {
     const user = await userModel.findById(req.body.id);
     if (!user) {
@@ -646,6 +647,123 @@ updateGoogleUser = async (req, res) => {
   }
 };
 
+// send reset email
+const sendPasswordResetEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Find the user by email
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // generate otp
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    user.otp = otp;
+
+    // send email
+    const sent = sendResetEmail(email, otp);
+
+    if (!sent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send password reset email",
+      });
+    }
+
+    user.otpExpiration = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    // Save the user
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset email sent successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error,
+    });
+  }
+};
+
+// reset password
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, OTP, and new password are required",
+      });
+    }
+
+    // Find the user by email
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // check otp
+    if (user.otp !== parseInt(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // check otp expiration
+    if (Date.now() > user.otpExpiration) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the user's password in the database
+    user.password = hashedNewPassword;
+    user.otp = null;
+    user.otpExpiration = null;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error,
+    });
+  }
+};
+
 // get expense and income by user
 
 // Exporting
@@ -665,4 +783,6 @@ module.exports = {
   uploadProfilePicture,
   changePassword,
   updateGoogleUser,
+  sendPasswordResetEmail,
+  resetPassword,
 };
