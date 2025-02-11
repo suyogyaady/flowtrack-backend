@@ -27,6 +27,21 @@ const createUser = async (req, res) => {
     });
   }
 
+  // Check if the budget is a number
+  if (isNaN(budget)) {
+    return res.status(400).json({
+      success: false,
+      message: "Budget must be a number!",
+    });
+  }
+  // Check if the budget is a positive number
+  if (budget <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Budget must be a positive number!",
+    });
+  }
+
   // 4. Error Handling (Try Catch)
   try {
     // 5. Check if the user is already registered
@@ -146,6 +161,7 @@ const deleteAccount = async (req, res) => {
   try {
     // Get the user ID from the request (assuming token verification middleware sets `req.user.id`)
     const userId = req.user.id;
+    const password = req.body.password;
 
     // Find the user in the database
     const user = await userModel.findById(userId);
@@ -153,6 +169,15 @@ const deleteAccount = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    // Compare the provided password with the hashed password in the database
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
       });
     }
 

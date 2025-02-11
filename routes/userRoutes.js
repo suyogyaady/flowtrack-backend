@@ -10,7 +10,7 @@ router.post("/create", userController.createUser);
 router.post("/login", userController.loginUser);
 
 //delete account route
-router.delete("/delete_account", authGuard, userController.deleteAccount);
+router.put("/delete_account", authGuard, userController.deleteAccount);
 
 // // Creating user forgot password route
 // router.post("/forgot-password", userController.forgotPassword);
